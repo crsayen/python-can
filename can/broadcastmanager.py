@@ -11,6 +11,7 @@ import abc
 import logging
 import threading
 import time
+import can
 
 log = logging.getLogger("can.bcm")
 
@@ -36,7 +37,7 @@ class CyclicSendTaskABC(CyclicTask):
 
     def __init__(self, messages, period):
         """
-        :param List[can.Message] message: The message to be sent periodically.
+        :param List[can.Message] messages: The message to be sent periodically.
         :param float period: The rate in seconds at which to send the messages.
         """
         if not isinstance(messages, list):
@@ -65,10 +66,10 @@ class LimitedDurationCyclicSendTaskABC(CyclicSendTaskABC):
     def __init__(self, messages, period, duration):
         """Message send task with a defined duration and period.
 
-        :param List[can.Message] message: The message to be sent periodically.
-        :param float period: The rate in seconds at which to send the message.
+        :param List[can.Message] messages: The message to be sent periodically.
+        :param float period: The rate in seconds at which to send the messages.
         :param float duration:
-            The duration to keep sending this message at given rate.
+            The duration to keep sending this messages at given rate.
         """
         super().__init__(messages, period)
         self.duration = duration
@@ -87,10 +88,10 @@ class ModifiableCyclicTaskABC(CyclicSendTaskABC):
     """Adds support for modifying a periodic message"""
 
     def modify_data(self, messages):
-        """Update the contents of this periodically sent message without altering
+        """Update the contents of this periodically sent messages without altering
         the timing.
 
-        :param can.Message message:
+        :param List[can.Message] messages:
           The message with the new :attr:`can.Message.data`.
           Note: The arbitration ID cannot be changed.
         """
@@ -104,10 +105,10 @@ class MultiRateCyclicSendTaskABC(CyclicSendTaskABC):
     def __init__(self, channel, messages, count, initial_period, subsequent_period):
         """
         Transmits a message `count` times at `initial_period` then continues to
-        transmit message at `subsequent_period`.
+        transmit messages at `subsequent_period`.
 
         :param channel: See interface specific documentation.
-        :param List[can.Message] message:
+        :param List[can.Message] messages:
         :param int count:
         :param float initial_period:
         :param float subsequent_period:
