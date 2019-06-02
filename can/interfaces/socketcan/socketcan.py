@@ -645,8 +645,16 @@ class SocketcanBus(BusABC):
 
         """
         bcm_socket = None
-        for msg in msgs:
-            bcm_socket = self._get_bcm_socket(msg.channel or self.channel)
+        all_same_id = all(
+            message.arbitration_id == msgs[0].arbitration_id for message in msgs
+        )
+        if not all_same_id:
+            raise ValueError("All Arbitration IDs should be the same")
+        all_same_channel = all(message.channel == msgs[0].channel for message in msgs)
+        if not all_same_channel:
+            raise ValueError("All Channel IDs should be the same")
+
+        bcm_socket = self._get_bcm_socket(msgs[0].channel or self.channel)
         task = CyclicSendTask(bcm_socket, msgs, period, duration)
         return task
 

@@ -129,6 +129,7 @@ def cyclic_multiple_send_modify(bus):
     print("Starting to send a message with even data every 1 s for 10 s with odd data")
     task.modify_data(messages_even)
     time.sleep(10)
+    print("stopped cyclic modify send")
 
 
 if __name__ == "__main__":
