@@ -191,7 +191,7 @@ def build_bcm_tx_delete_header(can_id, flags):
 
 
 def build_bcm_transmit_header(
-    can_id, count, initial_period, subsequent_period, msg_flags
+    can_id, count, initial_period, subsequent_period, msg_flags, nframes=1
 ):
     opcode = CAN_BCM_TX_SETUP
 
@@ -209,7 +209,6 @@ def build_bcm_transmit_header(
 
     ival1_seconds, ival1_usec = split_time(initial_period)
     ival2_seconds, ival2_usec = split_time(subsequent_period)
-    nframes = 1
 
     return build_bcm_header(
         opcode,
@@ -224,8 +223,8 @@ def build_bcm_transmit_header(
     )
 
 
-def build_bcm_update_header(can_id, msg_flags):
-    return build_bcm_header(CAN_BCM_TX_SETUP, msg_flags, 0, 0, 0, 0, 0, can_id, 1)
+def build_bcm_update_header(can_id, msg_flags, nframes=1):
+    return build_bcm_header(CAN_BCM_TX_SETUP, msg_flags, 0, 0, 0, 0, 0, can_id, nframes)
 
 
 def dissect_can_frame(frame):
@@ -296,38 +295,47 @@ class CyclicSendTask(
 
     """
 
-    def __init__(self, bcm_socket, message, period, duration=None):
+    def __init__(self, bcm_socket, messages, period, duration=None):
         """
         :param bcm_socket: An open bcm socket on the desired CAN channel.
-        :param can.Message message: The message to be sent periodically.
+        :param List[can.Message] messages: The message to be sent periodically.
         :param float period: The rate in seconds at which to send the message.
         :param float duration: Approximate duration in seconds to send the message.
         """
-        super().__init__(message, period, duration)
+        super().__init__(messages, period, duration)
+        self.period = period
+        self.duration = duration
         self.bcm_socket = bcm_socket
         self.duration = duration
-        self._tx_setup(message)
-        self.message = message
+        self._tx_setup(messages)
+        self.messages = messages
 
-    def _tx_setup(self, message):
-
+    def _tx_setup(self, messages):
         # Create a low level packed frame to pass to the kernel
-        self.can_id_with_flags = _add_flags_to_can_id(message)
-        self.flags = CAN_FD_FRAME if message.is_fd else 0
-        if self.duration:
-            count = int(self.duration / self.period)
-            ival1 = self.period
-            ival2 = 0
-        else:
-            count = 0
-            ival1 = 0
-            ival2 = self.period
+        header = bytearray()
+        body = bytearray()
+        for message in messages:
+            self.can_id_with_flags = _add_flags_to_can_id(message)
+            self.flags = CAN_FD_FRAME if message.is_fd else 0
+            if self.duration:
+                count = int(self.duration / self.period)
+                ival1 = self.period
+                ival2 = 0
+            else:
+                count = 0
+                ival1 = 0
+                ival2 = self.period
+            body += build_can_frame(message)
+            log.debug("Sending BCM command")
         header = build_bcm_transmit_header(
-            self.can_id_with_flags, count, ival1, ival2, self.flags
+            self.can_id_with_flags,
+            count,
+            ival1,
+            ival2,
+            self.flags,
+            nframes=len(messages),
         )
-        frame = build_can_frame(message)
-        log.debug("Sending BCM command")
-        send_bcm(self.bcm_socket, header + frame)
+        send_bcm(self.bcm_socket, header + body)
 
     def stop(self):
         """Send a TX_DELETE message to cancel this task.
@@ -341,22 +349,33 @@ class CyclicSendTask(
         stopframe = build_bcm_tx_delete_header(self.can_id_with_flags, self.flags)
         send_bcm(self.bcm_socket, stopframe)
 
-    def modify_data(self, message):
-        """Update the contents of this periodically sent message.
+    def modify_data(self, messages):
+        """Update the contents of the periodically sent messages.
 
         Note the Message must have the same :attr:`~can.Message.arbitration_id`
         like the first message.
         """
-        assert (
-            message.arbitration_id == self.can_id
-        ), "You cannot modify the can identifier"
-        self.message = message
-        header = build_bcm_update_header(self.can_id_with_flags, self.flags)
-        frame = build_can_frame(message)
-        send_bcm(self.bcm_socket, header + frame)
+        all_same_id = all(
+            message.arbitration_id == messages[0].arbitration_id for message in messages
+        )
+        if not all_same_id:
+            raise ValueError("All Arbitration IDs should be the same")
+        self.messages = messages
+
+        header = bytearray()
+        body = bytearray()
+        header = build_bcm_update_header(
+            can_id=self.can_id_with_flags, msg_flags=self.flags, nframes=len(messages)
+        )
+        for message in messages:
+            self.can_id_with_flags = _add_flags_to_can_id(message)
+            self.flags = CAN_FD_FRAME if message.is_fd else 0
+            body += build_can_frame(message)
+            log.debug("Sending BCM command")
+        send_bcm(self.bcm_socket, header + body)
 
     def start(self):
-        self._tx_setup(self.message)
+        self._tx_setup(self.messages)
 
 
 class MultiRateCyclicSendTask(CyclicSendTask):
@@ -599,12 +618,12 @@ class SocketcanBus(BusABC):
             raise can.CanError("Failed to transmit: %s" % exc)
         return sent
 
-    def _send_periodic_internal(self, msg, period, duration=None):
+    def _send_periodic_internal(self, msgs, period, duration=None):
         """Start sending a message at a given period on this bus.
 
         The kernel's broadcast manager will be used.
 
-        :param can.Message msg:
+        :param List[can.Message] msg:
             Message to transmit
         :param float period:
             Period in seconds between each message
@@ -625,8 +644,21 @@ class SocketcanBus(BusABC):
             least *duration* seconds.
 
         """
-        bcm_socket = self._get_bcm_socket(msg.channel or self.channel)
-        task = CyclicSendTask(bcm_socket, msg, period, duration)
+        bcm_socket = None
+        all_same_id = all(
+            message.arbitration_id == msgs[0].arbitration_id for message in msgs
+        )
+        if not all_same_id:
+            raise ValueError("All Arbitration IDs should be the same")
+        all_same_channel = all(message.channel == msgs[0].channel for message in msgs)
+        if not all_same_channel:
+            raise ValueError("All Channel IDs should be the same")
+
+        bcm_socket = self._get_bcm_socket(msgs[0].channel or self.channel)
+        # TODO: The SocketCAN BCM interface treats all cyclic tasks sharing an
+        # Arbitration ID as the same Cyclic group. We should probably warn the
+        # user instead of overwriting the old group?
+        task = CyclicSendTask(bcm_socket, msgs, period, duration)
         return task
 
     def _get_bcm_socket(self, channel):

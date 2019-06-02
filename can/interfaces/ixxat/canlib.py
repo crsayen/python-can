@@ -716,29 +716,38 @@ class IXXATBus(BusABC):
 class CyclicSendTask(LimitedDurationCyclicSendTaskABC, RestartableCyclicTaskABC):
     """A message in the cyclic transmit list."""
 
-    def __init__(self, scheduler, msg, period, duration, resolution):
-        super().__init__(msg, period, duration)
-        self._scheduler = scheduler
-        self._index = None
-        self._count = int(duration / period) if duration else 0
+    def __init__(self, scheduler, msgs, period, duration, resolution):
+        super().__init__(msgs, period, duration)
+        # Only supports 1 Message in the group?
+        if len(self.messages) == 1:
+            self._scheduler = scheduler
+            self._index = None
+            self._count = int(duration / period) if duration else 0
 
-        self._msg = structures.CANCYCLICTXMSG()
-        self._msg.wCycleTime = int(round(period * resolution))
-        self._msg.dwMsgId = msg.arbitration_id
-        self._msg.uMsgInfo.Bits.type = constants.CAN_MSGTYPE_DATA
-        self._msg.uMsgInfo.Bits.ext = 1 if msg.is_extended_id else 0
-        self._msg.uMsgInfo.Bits.rtr = 1 if msg.is_remote_frame else 0
-        self._msg.uMsgInfo.Bits.dlc = msg.dlc
-        for i, b in enumerate(msg.data):
-            self._msg.abData[i] = b
-        self.start()
+            self._msg = structures.CANCYCLICTXMSG()
+            self._msg.wCycleTime = int(round(period * resolution))
+            self._msg.dwMsgId = msg.arbitration_id
+            self._msg.uMsgInfo.Bits.type = constants.CAN_MSGTYPE_DATA
+            self._msg.uMsgInfo.Bits.ext = 1 if msg.is_extended_id else 0
+            self._msg.uMsgInfo.Bits.rtr = 1 if msg.is_remote_frame else 0
+            self._msg.uMsgInfo.Bits.dlc = msg.dlc
+            for i, b in enumerate(msg.data):
+                self._msg.abData[i] = b
+            self.start()
+        else:
+            raise ValueError("IXXAT Interface only supports 1 element")
+            # TODO: Fall back to the default implementation?
 
     def start(self):
         """Start transmitting message (add to list if needed)."""
-        if self._index is None:
-            self._index = ctypes.c_uint32()
-            _canlib.canSchedulerAddMessage(self._scheduler, self._msg, self._index)
-        _canlib.canSchedulerStartMessage(self._scheduler, self._index, self._count)
+        if len(self.messages) == 1:
+            if self._index is None:
+                self._index = ctypes.c_uint32()
+                _canlib.canSchedulerAddMessage(self._scheduler, self._msg, self._index)
+            _canlib.canSchedulerStartMessage(self._scheduler, self._index, self._count)
+        else:
+            raise ValueError("IXXAT Interface only supports 1 element")
+        # TODO: Fall back to the default implementation?
 
     def pause(self):
         """Pause transmitting message (keep it in the list)."""
