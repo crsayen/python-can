@@ -223,8 +223,8 @@ def build_bcm_transmit_header(
     )
 
 
-def build_bcm_update_header(can_id, msg_flags):
-    return build_bcm_header(CAN_BCM_TX_SETUP, msg_flags, 0, 0, 0, 0, 0, can_id, 1)
+def build_bcm_update_header(can_id, msg_flags, nframes=1):
+    return build_bcm_header(CAN_BCM_TX_SETUP, msg_flags, 0, 0, 0, 0, 0, can_id, nframes)
 
 
 def dissect_can_frame(frame):
@@ -295,20 +295,20 @@ class CyclicSendTask(
 
     """
 
-    def __init__(self, bcm_socket, message, period, duration=None):
+    def __init__(self, bcm_socket, messages, period, duration=None):
         """
         :param bcm_socket: An open bcm socket on the desired CAN channel.
-        :param can.Message message: The message to be sent periodically.
+        :param List[can.Message] messages: The message to be sent periodically.
         :param float period: The rate in seconds at which to send the message.
         :param float duration: Approximate duration in seconds to send the message.
         """
-        #  super().__init__(message, period, duration)
+        super().__init__(messages, period, duration)
         self.period = period
         self.duration = duration
         self.bcm_socket = bcm_socket
         self.duration = duration
-        self._tx_setup(message)
-        self.messages = message
+        self._tx_setup(messages)
+        self.messages = messages
 
     def _tx_setup(self, messages):
         # Create a low level packed frame to pass to the kernel
@@ -349,22 +349,33 @@ class CyclicSendTask(
         stopframe = build_bcm_tx_delete_header(self.can_id_with_flags, self.flags)
         send_bcm(self.bcm_socket, stopframe)
 
-    def modify_data(self, message):
-        """Update the contents of this periodically sent message.
+    def modify_data(self, messages):
+        """Update the contents of the periodically sent messages.
 
         Note the Message must have the same :attr:`~can.Message.arbitration_id`
         like the first message.
         """
-        assert (
-            message.arbitration_id == self.can_id
-        ), "You cannot modify the can identifier"
-        self.message = message
-        header = build_bcm_update_header(self.can_id_with_flags, self.flags)
-        frame = build_can_frame(message)
-        send_bcm(self.bcm_socket, header + frame)
+        all_same_id = all(
+            message.arbitration_id == messages[0].arbitration_id for message in messages
+        )
+        if not all_same_id:
+            raise ValueError("All Arbitration IDs should be the same")
+        self.messages = messages
+
+        header = bytearray()
+        body = bytearray()
+        header = build_bcm_update_header(
+            can_id=self.can_id_with_flags, msg_flags=self.flags, nframes=len(messages)
+        )
+        for message in messages:
+            self.can_id_with_flags = _add_flags_to_can_id(message)
+            self.flags = CAN_FD_FRAME if message.is_fd else 0
+            body += build_can_frame(message)
+            log.debug("Sending BCM command")
+        send_bcm(self.bcm_socket, header + body)
 
     def start(self):
-        self._tx_setup(self.message)
+        self._tx_setup(self.messages)
 
 
 class MultiRateCyclicSendTask(CyclicSendTask):

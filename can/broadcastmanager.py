@@ -34,28 +34,43 @@ class CyclicSendTaskABC(CyclicTask):
     Message send task with defined period
     """
 
-    def __init__(self, message, period):
+    def __init__(self, messages, period):
         """
-        :param can.Message message: The message to be sent periodically.
-        :param float period: The rate in seconds at which to send the message.
+        :param List[can.Message] message: The message to be sent periodically.
+        :param float period: The rate in seconds at which to send the messages.
         """
-        self.message = message
-        self.can_id = message.arbitration_id
-        self.arbitration_id = message.arbitration_id
+        if not isinstance(messages, list):
+            if isinstance(messages, can.Message):
+                messages = [messages]
+            else:
+                raise ValueError("Must be either a list or a Message")
+        if not messages:
+            raise ValueError("Must be at least a list of length 1")
+
+        self.messages = messages
+
+        all_same_id = all(
+            message.arbitration_id == messages[0].arbitration_id for message in messages
+        )
+        if not all_same_id:
+            raise ValueError("All Arbitration IDs should be the same")
+
+        # Take the Arbitration ID of the first element
+        self.can_id = messages[0].arbitration_id
+        self.arbitration_id = messages[0].arbitration_id
         self.period = period
-        super().__init__()
 
 
 class LimitedDurationCyclicSendTaskABC(CyclicSendTaskABC):
-    def __init__(self, message, period, duration):
+    def __init__(self, messages, period, duration):
         """Message send task with a defined duration and period.
 
-        :param can.Message message: The message to be sent periodically.
+        :param List[can.Message] message: The message to be sent periodically.
         :param float period: The rate in seconds at which to send the message.
         :param float duration:
             The duration to keep sending this message at given rate.
         """
-        super().__init__(message, period)
+        super().__init__(messages, period)
         self.duration = duration
 
 
@@ -71,7 +86,7 @@ class RestartableCyclicTaskABC(CyclicSendTaskABC):
 class ModifiableCyclicTaskABC(CyclicSendTaskABC):
     """Adds support for modifying a periodic message"""
 
-    def modify_data(self, message):
+    def modify_data(self, messages):
         """Update the contents of this periodically sent message without altering
         the timing.
 
@@ -79,25 +94,25 @@ class ModifiableCyclicTaskABC(CyclicSendTaskABC):
           The message with the new :attr:`can.Message.data`.
           Note: The arbitration ID cannot be changed.
         """
-        self.message = message
+        self.messages = messages
 
 
 class MultiRateCyclicSendTaskABC(CyclicSendTaskABC):
     """A Cyclic send task that supports switches send frequency after a set time.
     """
 
-    def __init__(self, channel, message, count, initial_period, subsequent_period):
+    def __init__(self, channel, messages, count, initial_period, subsequent_period):
         """
         Transmits a message `count` times at `initial_period` then continues to
         transmit message at `subsequent_period`.
 
         :param channel: See interface specific documentation.
-        :param can.Message message:
+        :param List[can.Message] message:
         :param int count:
         :param float initial_period:
         :param float subsequent_period:
         """
-        super().__init__(channel, message, subsequent_period)
+        super().__init__(channel, messages, subsequent_period)
 
 
 class ThreadBasedCyclicSendTask(
@@ -105,8 +120,8 @@ class ThreadBasedCyclicSendTask(
 ):
     """Fallback cyclic send task using thread."""
 
-    def __init__(self, bus, lock, message, period, duration=None):
-        super().__init__(message, period, duration)
+    def __init__(self, bus, lock, messages, period, duration=None):
+        super().__init__(messages, period, duration)
         self.bus = bus
         self.lock = lock
         self.stopped = True
@@ -120,18 +135,20 @@ class ThreadBasedCyclicSendTask(
     def start(self):
         self.stopped = False
         if self.thread is None or not self.thread.is_alive():
-            name = "Cyclic send task for 0x%X" % (self.message.arbitration_id)
+            name = "Cyclic send task for 0x%X" % (self.messages[0].arbitration_id)
             self.thread = threading.Thread(target=self._run, name=name)
             self.thread.daemon = True
             self.thread.start()
 
     def _run(self):
+        msg_index = 0
         while not self.stopped:
             # Prevent calling bus.send from multiple threads
             with self.lock:
                 started = time.time()
                 try:
-                    self.bus.send(self.message)
+                    self.bus.send(self.messages[msg_index])
+                    msg_index = (msg_index + 1) % len(self.messages)
                 except Exception as exc:
                     log.exception(exc)
                     break

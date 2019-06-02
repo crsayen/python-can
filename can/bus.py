@@ -163,7 +163,7 @@ class BusABC(metaclass=ABCMeta):
         """
         raise NotImplementedError("Trying to write to a readonly bus?")
 
-    def send_periodic(self, msg, period, duration=None, store_task=True):
+    def send_periodic(self, msgs, period, duration=None, store_task=True):
         """Start sending a message at a given period on this bus.
 
         The task will be active until one of the following conditions are met:
@@ -174,7 +174,7 @@ class BusABC(metaclass=ABCMeta):
         - :meth:`BusABC.stop_all_periodic_tasks()` is called
         - the task's :meth:`CyclicTask.stop()` method is called.
 
-        :param can.Message msg:
+        :param List[can.Message] msgs:
             Message to transmit
         :param float period:
             Period in seconds between each message
@@ -202,7 +202,9 @@ class BusABC(metaclass=ABCMeta):
             api with ``store_task==True`` may not be appropriate as the stopped tasks are
             still taking up memory as they are associated with the Bus instance.
         """
-        task = self._send_periodic_internal(msg, period, duration)
+        if not isinstance(msgs, list):
+            msgs = [msgs]
+        task = self._send_periodic_internal(msgs, period, duration)
         # we wrap the task's stop method to also remove it from the Bus's list of tasks
         original_stop_method = task.stop
 
@@ -221,12 +223,12 @@ class BusABC(metaclass=ABCMeta):
 
         return task
 
-    def _send_periodic_internal(self, msg, period, duration=None):
+    def _send_periodic_internal(self, msgs, period, duration=None):
         """Default implementation of periodic message sending using threading.
 
         Override this method to enable a more efficient backend specific approach.
 
-        :param can.Message msg:
+        :param List[can.Message] msgs:
             Message to transmit
         :param float period:
             Period in seconds between each message
@@ -244,7 +246,7 @@ class BusABC(metaclass=ABCMeta):
                 threading.Lock()
             )  # pylint: disable=attribute-defined-outside-init
         task = ThreadBasedCyclicSendTask(
-            self, self._lock_send_periodic, msg, period, duration
+            self, self._lock_send_periodic, msgs, period, duration
         )
         return task
 
