@@ -384,17 +384,25 @@ class MultiRateCyclicSendTask(CyclicSendTask):
 
     """
 
-    def __init__(self, channel, message, count, initial_period, subsequent_period):
-        super().__init__(channel, message, subsequent_period)
+    def __init__(self, channel, messages, count, initial_period, subsequent_period):
+        super().__init__(channel, messages, subsequent_period)
 
         # Create a low level packed frame to pass to the kernel
-        frame = build_can_frame(message)
         header = build_bcm_transmit_header(
-            self.can_id_with_flags, count, initial_period, subsequent_period, self.flags
+            self.can_id_with_flags,
+            count,
+            initial_period,
+            subsequent_period,
+            self.flags,
+            nframes=len(messages),
         )
 
+        body = bytearray()
+        for message in messages:
+            body += build_can_frame(message)
+
         log.info("Sending BCM TX_SETUP command")
-        send_bcm(self.bcm_socket, header + frame)
+        send_bcm(self.bcm_socket, header + body)
 
 
 def create_socket():
