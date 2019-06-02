@@ -726,12 +726,12 @@ class CyclicSendTask(LimitedDurationCyclicSendTaskABC, RestartableCyclicTaskABC)
 
             self._msg = structures.CANCYCLICTXMSG()
             self._msg.wCycleTime = int(round(period * resolution))
-            self._msg.dwMsgId = msg.arbitration_id
+            self._msg.dwMsgId = msgs[0].arbitration_id
             self._msg.uMsgInfo.Bits.type = constants.CAN_MSGTYPE_DATA
-            self._msg.uMsgInfo.Bits.ext = 1 if msg.is_extended_id else 0
-            self._msg.uMsgInfo.Bits.rtr = 1 if msg.is_remote_frame else 0
-            self._msg.uMsgInfo.Bits.dlc = msg.dlc
-            for i, b in enumerate(msg.data):
+            self._msg.uMsgInfo.Bits.ext = 1 if msgs[0].is_extended_id else 0
+            self._msg.uMsgInfo.Bits.rtr = 1 if msgs[0].is_remote_frame else 0
+            self._msg.uMsgInfo.Bits.dlc = msgs[0].dlc
+            for i, b in enumerate(msgs[0].data):
                 self._msg.abData[i] = b
             self.start()
         else:
