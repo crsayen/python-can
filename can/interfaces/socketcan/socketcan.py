@@ -623,7 +623,7 @@ class SocketcanBus(BusABC):
 
         The kernel's broadcast manager will be used.
 
-        :param can.Message msg:
+        :param List[can.Message] msg:
             Message to transmit
         :param float period:
             Period in seconds between each message
@@ -655,6 +655,9 @@ class SocketcanBus(BusABC):
             raise ValueError("All Channel IDs should be the same")
 
         bcm_socket = self._get_bcm_socket(msgs[0].channel or self.channel)
+        # TODO: The SocketCAN BCM interface treats all cyclic tasks sharing an
+        # Arbitration ID as the same Cyclic group. We should probably warn the
+        # user instead of overwriting the old group?
         task = CyclicSendTask(bcm_socket, msgs, period, duration)
         return task
 
