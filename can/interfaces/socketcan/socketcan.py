@@ -326,7 +326,6 @@ class CyclicSendTask(
                 ival1 = 0
                 ival2 = self.period
             body += build_can_frame(message)
-            log.debug("Sending BCM command")
         header = build_bcm_transmit_header(
             self.can_id_with_flags,
             count,
@@ -335,6 +334,7 @@ class CyclicSendTask(
             self.flags,
             nframes=len(messages),
         )
+        log.debug("Sending BCM command")
         send_bcm(self.bcm_socket, header + body)
 
     def stop(self):
@@ -371,7 +371,7 @@ class CyclicSendTask(
             self.can_id_with_flags = _add_flags_to_can_id(message)
             self.flags = CAN_FD_FRAME if message.is_fd else 0
             body += build_can_frame(message)
-            log.debug("Sending BCM command")
+        log.debug("Sending BCM command")
         send_bcm(self.bcm_socket, header + body)
 
     def start(self):
