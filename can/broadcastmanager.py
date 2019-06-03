@@ -57,7 +57,6 @@ class CyclicSendTaskABC(CyclicTask):
             raise ValueError("All Arbitration IDs should be the same")
 
         # Take the Arbitration ID of the first element
-        self.can_id = messages[0].arbitration_id
         self.arbitration_id = messages[0].arbitration_id
         self.period = period
 
