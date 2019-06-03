@@ -719,7 +719,9 @@ class CyclicSendTask(LimitedDurationCyclicSendTaskABC, RestartableCyclicTaskABC)
     def __init__(self, scheduler, msgs, period, duration, resolution):
         super().__init__(msgs, period, duration)
         if len(self.messages) != 1:
-            raise ValueError("IXXAT Interface only supports 1 element")
+            raise ValueError(
+                "IXXAT Interface only supports periodic transmission of 1 element"
+            )
 
         self._scheduler = scheduler
         self._index = None
