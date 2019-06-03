@@ -314,9 +314,9 @@ class CyclicSendTask(
         # Create a low level packed frame to pass to the kernel
         header = bytearray()
         body = bytearray()
+        self.can_id_with_flags = _add_flags_to_can_id(messages[0])
+        self.flags = CAN_FD_FRAME if messages[0].is_fd else 0
         for message in messages:
-            self.can_id_with_flags = _add_flags_to_can_id(message)
-            self.flags = CAN_FD_FRAME if message.is_fd else 0
             if self.duration:
                 count = int(self.duration / self.period)
                 ival1 = self.period
@@ -367,9 +367,9 @@ class CyclicSendTask(
         header = build_bcm_update_header(
             can_id=self.can_id_with_flags, msg_flags=self.flags, nframes=len(messages)
         )
+        self.can_id_with_flags = _add_flags_to_can_id(messages[0])
+        self.flags = CAN_FD_FRAME if messages[0].is_fd else 0
         for message in messages:
-            self.can_id_with_flags = _add_flags_to_can_id(message)
-            self.flags = CAN_FD_FRAME if message.is_fd else 0
             body += build_can_frame(message)
         log.debug("Sending BCM command")
         send_bcm(self.bcm_socket, header + body)
