@@ -653,7 +653,6 @@ class SocketcanBus(BusABC):
             least *duration* seconds.
 
         """
-        bcm_socket = None
         all_same_id = all(
             message.arbitration_id == msgs[0].arbitration_id for message in msgs
         )
