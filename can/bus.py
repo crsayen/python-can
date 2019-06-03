@@ -174,7 +174,7 @@ class BusABC(metaclass=ABCMeta):
         - :meth:`BusABC.stop_all_periodic_tasks()` is called
         - the task's :meth:`CyclicTask.stop()` method is called.
 
-        :param Union[List[can.Message], can.Message] msgs:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] msgs:
             Messages to transmit
         :param float period:
             Period in seconds between each message
@@ -229,7 +229,7 @@ class BusABC(metaclass=ABCMeta):
 
         Override this method to enable a more efficient backend specific approach.
 
-        :param Union[List[can.Message], can.Message] msgs:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] msgs:
             Messages to transmit
         :param float period:
             Period in seconds between each message

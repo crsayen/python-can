@@ -37,18 +37,17 @@ class CyclicSendTaskABC(CyclicTask):
 
     def __init__(self, messages, period):
         """
-        :param Union[List[can.Message], can.Message] messages:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
             The messages to be sent periodically.
         :param float period: The rate in seconds at which to send the messages.
         """
-        if not isinstance(messages, list):
+        if not isinstance(messages, (list, tuple)):
             if isinstance(messages, can.Message):
                 messages = [messages]
             else:
-                raise ValueError("Must be either a list or a Message")
+                raise ValueError("Must be either a list, tuple, or a Message")
         if not messages:
-            raise ValueError("Must be at least a list of length 1")
-
+            raise ValueError("Must be at least a list or tuple of length 1")
         messages = tuple(messages)
 
         all_same_id = all(
@@ -67,7 +66,7 @@ class LimitedDurationCyclicSendTaskABC(CyclicSendTaskABC):
     def __init__(self, messages, period, duration):
         """Message send task with a defined duration and period.
 
-        :param Union[List[can.Message], can.Message] messages:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
             The messages to be sent periodically.
         :param float period: The rate in seconds at which to send the messages.
         :param float duration:
@@ -94,7 +93,7 @@ class ModifiableCyclicTaskABC(CyclicSendTaskABC):
         """Update the contents of the periodically sent messages, without
         altering the timing.
 
-        :param Union[List[can.Message], can.Message] messages:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
             The messages with the new :attr:`can.Message.data`.
             Note: The arbitration ID cannot be changed.
         """
@@ -111,7 +110,7 @@ class MultiRateCyclicSendTaskABC(CyclicSendTaskABC):
         transmit messages at `subsequent_period`.
 
         :param channel: See interface specific documentation.
-        :param Union[List[can.Message], can.Message] messages:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
         :param int count:
         :param float initial_period:
         :param float subsequent_period:

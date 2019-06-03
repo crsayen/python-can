@@ -298,7 +298,7 @@ class CyclicSendTask(
     def __init__(self, bcm_socket, messages, period, duration=None):
         """
         :param bcm_socket: An open BCM socket on the desired CAN channel.
-        :param Union[List[can.Message], can.Message] messages:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
             The messages to be sent periodically.
         :param float period:
             The rate in seconds at which to send the messages.
@@ -361,13 +361,13 @@ class CyclicSendTask(
         Note the Message must have the same :attr:`~can.Message.arbitration_id`
         like the first message.
         """
-        if not isinstance(messages, list):
+        if not isinstance(messages, (list, tuple)):
             if isinstance(messages, can.Message):
                 messages = [messages]
             else:
-                raise ValueError("Must be either a list or a Message")
+                raise ValueError("Must be either a list, tuple, or a Message")
         if not messages:
-            raise ValueError("Must be at least a list of length 1")
+            raise ValueError("Must be at least a list or tuple of length 1")
         messages = tuple(messages)
 
         all_same_id = all(
@@ -644,7 +644,7 @@ class SocketcanBus(BusABC):
 
         The kernel's Broadcast Manager SocketCAN API will be used.
 
-        :param Union[List[can.Message], can.Message] msgs:
+        :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
             The messages to be sent periodically
         :param float period:
             The rate in seconds at which th send the messages.
