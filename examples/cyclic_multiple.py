@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-This example exercises the periodic sending capabilities.
+This example exercises the periodic task's multiple message sending capabilities
 
 Expects a vcan0 interface:
 
@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 
 def cyclic_multiple_send(bus):
     """
-    Sends a message every 1 s with no explicit timeout
+    Sends periodic messages every 1 s with no explicit timeout
     Sleeps for 10 seconds then stops the task.
     """
     print("Starting to send a message every 1 s for 10 s")
@@ -134,7 +134,7 @@ def cyclic_multiple_send_modify(bus):
 
 if __name__ == "__main__":
     for interface, channel in [("socketcan", "vcan0")]:
-        print("Carrying out cyclic tests with {} interface".format(interface))
+        print("Carrying out cyclic multiple tests with {} interface".format(interface))
 
         bus = can.Bus(interface=interface, channel=channel, bitrate=500000)
 
