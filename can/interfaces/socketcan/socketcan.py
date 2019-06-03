@@ -298,9 +298,12 @@ class CyclicSendTask(
     def __init__(self, bcm_socket, messages, period, duration=None):
         """
         :param bcm_socket: An open bcm socket on the desired CAN channel.
-        :param List[can.Message] messages: The message to be sent periodically.
-        :param float period: The rate in seconds at which to send the message.
-        :param float duration: Approximate duration in seconds to send the message.
+        :param Union[List[can.Message], can.Message] messages:
+            The messages to be sent periodically.
+        :param float period:
+            The rate in seconds at which to send the messages.
+        :param float duration:
+            Approximate duration in seconds to send the messages for.
         """
         super().__init__(messages, period, duration)
         self.period = period
@@ -626,16 +629,16 @@ class SocketcanBus(BusABC):
         return sent
 
     def _send_periodic_internal(self, msgs, period, duration=None):
-        """Start sending a message at a given period on this bus.
+        """Start sending messages at a given period on this bus.
 
-        The kernel's broadcast manager will be used.
+        The kernel's Broadcast Manager SocketCAN API will be used.
 
-        :param List[can.Message] msg:
-            Message to transmit
+        :param Union[List[can.Message], can.Message] msgs:
+            The messages to be sent periodically
         :param float period:
-            Period in seconds between each message
+            The rate in seconds at which th send the messages.
         :param float duration:
-            The duration to keep sending this message at given rate. If
+            Approximate duration in seconds to continue sending messages. If
             no duration is provided, the task will continue indefinitely.
 
         :return:
@@ -645,7 +648,7 @@ class SocketcanBus(BusABC):
 
         .. note::
 
-            Note the duration before the message stops being sent may not
+            Note the duration before the messages stop being sent may not
             be exactly the same as the duration specified by the user. In
             general the message will be sent at the given rate until at
             least *duration* seconds.
