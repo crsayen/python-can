@@ -123,7 +123,7 @@ class ThreadBasedCyclicSendTask(
     def __init__(self, bus, lock, messages, period, duration=None):
         super().__init__(messages, period, duration)
         self.bus = bus
-        self.lock = lock
+        self.send_lock = lock
         self.stopped = True
         self.thread = None
         self.end_time = time.time() + duration if duration else None
@@ -144,16 +144,16 @@ class ThreadBasedCyclicSendTask(
         msg_index = 0
         while not self.stopped:
             # Prevent calling bus.send from multiple threads
-            with self.lock:
+            with self.send_lock:
                 started = time.time()
                 try:
                     self.bus.send(self.messages[msg_index])
-                    msg_index = (msg_index + 1) % len(self.messages)
                 except Exception as exc:
                     log.exception(exc)
                     break
             if self.end_time is not None and time.time() >= self.end_time:
                 break
+            msg_index = (msg_index + 1) % len(self.messages)
             # Compensate for the time it takes to send the message
             delay = self.period - (time.time() - started)
             time.sleep(max(0.0, delay))
