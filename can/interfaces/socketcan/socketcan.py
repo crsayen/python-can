@@ -306,7 +306,6 @@ class CyclicSendTask(
         self.period = period
         self.duration = duration
         self.bcm_socket = bcm_socket
-        self.duration = duration
         self._tx_setup(messages)
         self.messages = messages
 
