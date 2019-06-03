@@ -49,7 +49,7 @@ class CyclicSendTaskABC(CyclicTask):
         if not messages:
             raise ValueError("Must be at least a list of length 1")
 
-        self.messages = messages
+        messages = tuple(messages)
 
         all_same_id = all(
             message.arbitration_id == messages[0].arbitration_id for message in messages
@@ -60,6 +60,7 @@ class CyclicSendTaskABC(CyclicTask):
         # Take the Arbitration ID of the first element
         self.arbitration_id = messages[0].arbitration_id
         self.period = period
+        self.messages = messages
 
 
 class LimitedDurationCyclicSendTaskABC(CyclicSendTaskABC):

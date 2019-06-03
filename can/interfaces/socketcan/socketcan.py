@@ -368,6 +368,7 @@ class CyclicSendTask(
                 raise ValueError("Must be either a list or a Message")
         if not messages:
             raise ValueError("Must be at least a list of length 1")
+        messages = tuple(messages)
 
         all_same_id = all(
             message.arbitration_id == messages[0].arbitration_id for message in messages
