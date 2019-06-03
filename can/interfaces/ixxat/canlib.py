@@ -738,9 +738,6 @@ class CyclicSendTask(LimitedDurationCyclicSendTaskABC, RestartableCyclicTaskABC)
 
     def start(self):
         """Start transmitting message (add to list if needed)."""
-        if len(self.messages) != 1:
-            raise ValueError("IXXAT Interface only supports 1 element")
-
         if self._index is None:
             self._index = ctypes.c_uint32()
             _canlib.canSchedulerAddMessage(self._scheduler, self._msg, self._index)
