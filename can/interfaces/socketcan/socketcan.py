@@ -368,8 +368,6 @@ class CyclicSendTask(
         header = build_bcm_update_header(
             can_id=self.can_id_with_flags, msg_flags=self.flags, nframes=len(messages)
         )
-        self.can_id_with_flags = _add_flags_to_can_id(messages[0])
-        self.flags = CAN_FD_FRAME if messages[0].is_fd else 0
         for message in messages:
             body += build_can_frame(message)
         log.debug("Sending BCM command")
