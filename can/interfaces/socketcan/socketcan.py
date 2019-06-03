@@ -297,7 +297,7 @@ class CyclicSendTask(
 
     def __init__(self, bcm_socket, messages, period, duration=None):
         """
-        :param bcm_socket: An open bcm socket on the desired CAN channel.
+        :param bcm_socket: An open BCM socket on the desired CAN channel.
         :param Union[List[can.Message], can.Message] messages:
             The messages to be sent periodically.
         :param float period:
@@ -305,12 +305,14 @@ class CyclicSendTask(
         :param float duration:
             Approximate duration in seconds to send the messages for.
         """
+        # The following are assigned by LimitedDurationCyclicSendTaskABC:
+        #   - self.messages
+        #   - self.period
+        #   - self.duration
         super().__init__(messages, period, duration)
-        self.period = period
-        self.duration = duration
+
         self.bcm_socket = bcm_socket
-        self._tx_setup(messages)
-        self.messages = messages
+        self._tx_setup(self.messages)
 
     def _tx_setup(self, messages):
         # Create a low level packed frame to pass to the kernel
