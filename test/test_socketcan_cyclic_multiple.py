@@ -8,6 +8,7 @@ import can
 
 from .config import TEST_INTERFACE_SOCKETCAN
 
+
 @unittest.skipUnless(TEST_INTERFACE_SOCKETCAN, "skip testing of socketcan")
 class SocketCanCyclicMultiple(unittest.TestCase):
     BITRATE = 500000
@@ -19,7 +20,8 @@ class SocketCanCyclicMultiple(unittest.TestCase):
     CHANNEL_2 = "vcan0"
 
     PERIOD = 1.0
-    TIMEOUT = 1.0
+
+    DELTA = 0.01
 
     def _find_start_index(self, tx_messages, message):
         """
@@ -186,7 +188,7 @@ class SocketCanCyclicMultiple(unittest.TestCase):
         self.assertTrue(start_index_odd != -1)
 
         # Now go through the partitioned results and assert that they're equal
-        for rx_message in results_even:
+        for rx_index, rx_message in enumerate(results_even):
             tx_message = messages_even[start_index_even]
 
             self.assertEqual(tx_message.arbitration_id, rx_message.arbitration_id)
@@ -199,7 +201,17 @@ class SocketCanCyclicMultiple(unittest.TestCase):
 
             start_index_even = (start_index_even + 1) % len(messages_even)
 
-        for rx_message in results_odd:
+            if rx_index != 0:
+                prev_rx_message = results_even[rx_index - 1]
+                # Assert timestamps are within the expected period
+                self.assertTrue(
+                    abs(
+                        (rx_message.timestamp - prev_rx_message.timestamp) - self.PERIOD
+                    )
+                    <= self.DELTA
+                )
+
+        for rx_index, rx_message in enumerate(results_odd):
             tx_message = messages_odd[start_index_odd]
 
             self.assertEqual(tx_message.arbitration_id, rx_message.arbitration_id)
@@ -211,6 +223,16 @@ class SocketCanCyclicMultiple(unittest.TestCase):
             self.assertEqual(tx_message.is_fd, rx_message.is_fd)
 
             start_index_odd = (start_index_odd + 1) % len(messages_odd)
+
+            if rx_index != 0:
+                prev_rx_message = results_odd[rx_index - 1]
+                # Assert timestamps are within the expected period
+                self.assertTrue(
+                    abs(
+                        (rx_message.timestamp - prev_rx_message.timestamp) - self.PERIOD
+                    )
+                    <= self.DELTA
+                )
 
 
 if __name__ == "__main__":
