@@ -41,6 +41,14 @@ class CyclicSendTaskABC(CyclicTask):
             The messages to be sent periodically.
         :param float period: The rate in seconds at which to send the messages.
         """
+        messages = self._check_and_convert_messages(messages)
+
+        # Take the Arbitration ID of the first element
+        self.arbitration_id = messages[0].arbitration_id
+        self.period = period
+        self.messages = messages
+
+    def _check_and_convert_messages(self, messages):
         if not isinstance(messages, (list, tuple)):
             if isinstance(messages, can.Message):
                 messages = [messages]
@@ -55,11 +63,7 @@ class CyclicSendTaskABC(CyclicTask):
         )
         if not all_same_id:
             raise ValueError("All Arbitration IDs should be the same")
-
-        # Take the Arbitration ID of the first element
-        self.arbitration_id = messages[0].arbitration_id
-        self.period = period
-        self.messages = messages
+        return messages
 
 
 class LimitedDurationCyclicSendTaskABC(CyclicSendTaskABC):
@@ -97,6 +101,7 @@ class ModifiableCyclicTaskABC(CyclicSendTaskABC):
             The messages with the new :attr:`can.Message.data`.
             Note: The arbitration ID cannot be changed.
         """
+        messages = self._check_and_convert_messages(messages)
         self.messages = messages
 
 

@@ -361,14 +361,7 @@ class CyclicSendTask(
         Note the Message must have the same :attr:`~can.Message.arbitration_id`
         like the first message.
         """
-        if not isinstance(messages, (list, tuple)):
-            if isinstance(messages, can.Message):
-                messages = [messages]
-            else:
-                raise ValueError("Must be either a list, tuple, or a Message")
-        if not messages:
-            raise ValueError("Must be at least a list or tuple of length 1")
-        messages = tuple(messages)
+        messages = self._check_and_convert_messages(messages)
 
         all_same_id = all(
             message.arbitration_id == messages[0].arbitration_id for message in messages
