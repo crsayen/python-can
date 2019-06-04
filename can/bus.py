@@ -203,8 +203,13 @@ class BusABC(metaclass=ABCMeta):
             appropriate as the stopped tasks are still taking up memory as they
             are associated with the Bus instance.
         """
-        if not isinstance(msgs, list):
-            msgs = [msgs]
+        if not isinstance(msgs, (list, tuple)):
+            if isinstance(msgs, can.Message):
+                msgs = [msgs]
+            else:
+                raise ValueError("Must be either a list, tuple, or a Message")
+        if not msgs:
+            raise ValueError("Must be at least a list or tuple of length 1")
         task = self._send_periodic_internal(msgs, period, duration)
         # we wrap the task's stop method to also remove it from the Bus's list of tasks
         original_stop_method = task.stop
