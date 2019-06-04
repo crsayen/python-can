@@ -362,12 +362,6 @@ class CyclicSendTask(
         like the first message.
         """
         messages = self._check_and_convert_messages(messages)
-
-        all_same_id = all(
-            message.arbitration_id == messages[0].arbitration_id for message in messages
-        )
-        if not all_same_id:
-            raise ValueError("All Arbitration IDs should be the same")
         self.messages = messages
 
         header = bytearray()
@@ -658,14 +652,7 @@ class SocketcanBus(BusABC):
             least *duration* seconds.
 
         """
-        all_same_id = all(
-            message.arbitration_id == msgs[0].arbitration_id for message in msgs
-        )
-        if not all_same_id:
-            raise ValueError("All Arbitration IDs should be the same")
-        all_same_channel = all(message.channel == msgs[0].channel for message in msgs)
-        if not all_same_channel:
-            raise ValueError("All Channel IDs should be the same")
+        msgs = LimitedDurationCyclicSendTaskABC._check_and_convert_messages(msgs)
 
         bcm_socket = self._get_bcm_socket(msgs[0].channel or self.channel)
         # TODO: The SocketCAN BCM interface treats all cyclic tasks sharing an
