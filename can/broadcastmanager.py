@@ -48,7 +48,8 @@ class CyclicSendTaskABC(CyclicTask):
         self.period = period
         self.messages = messages
 
-    def _check_and_convert_messages(self, messages):
+    @staticmethod
+    def _check_and_convert_messages(messages):
         if not isinstance(messages, (list, tuple)):
             if isinstance(messages, can.Message):
                 messages = [messages]
