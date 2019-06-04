@@ -11,6 +11,7 @@ import abc
 import logging
 import threading
 import time
+
 import can
 
 log = logging.getLogger("can.bcm")
@@ -65,7 +66,9 @@ class CyclicSendTaskABC(CyclicTask):
         if not all_same_id:
             raise ValueError("All Arbitration IDs should be the same")
 
-        all_same_channel = all(message.channel == messages[0].channel for message in messages)
+        all_same_channel = all(
+            message.channel == messages[0].channel for message in messages
+        )
         if not all_same_channel:
             raise ValueError("All Channel IDs should be the same")
 
