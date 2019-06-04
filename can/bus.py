@@ -5,6 +5,7 @@ Contains the ABC bus implementation and its documentation.
 """
 
 from abc import ABCMeta, abstractmethod
+import can
 import logging
 import threading
 from time import time
