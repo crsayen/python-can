@@ -429,6 +429,36 @@ class SocketCanCyclicMultiple(unittest.TestCase):
         with self.assertRaises(ValueError):
             task.modify_data(None)
 
+    def test_modify_data_unequal_lengths(self):
+        message = can.Message(
+            arbitration_id=0x401,
+            data=[0x11, 0x11, 0x11, 0x11, 0x11, 0x11],
+            is_extended_id=False,
+        )
+        new_messages = []
+        new_messages.append(
+            can.Message(
+                arbitration_id=0x401,
+                data=[0x11, 0x11, 0x11, 0x11, 0x11, 0x11],
+                is_extended_id=False,
+            )
+        )
+        new_messages.append(
+            can.Message(
+                arbitration_id=0x401,
+                data=[0x22, 0x22, 0x22, 0x22, 0x22, 0x22],
+                is_extended_id=False,
+            )
+        )
+
+        task = self._send_bus.send_periodic(message, self.PERIOD)
+        self.assertIsInstance(task, can.broadcastmanager.CyclicSendTaskABC)
+
+        time.sleep(2 * self.PERIOD)
+
+        with self.assertRaises(ValueError):
+            task.modify_data(new_messages)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -108,9 +108,19 @@ class ModifiableCyclicTaskABC(CyclicSendTaskABC):
 
         :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
             The messages with the new :attr:`can.Message.data`.
+
             Note: The arbitration ID cannot be changed.
+
+            Note: The number of new cyclic messages to be sent must be equal
+            to the original number of messages originally specified for this
+            task.
         """
         messages = self._check_and_convert_messages(messages)
+        if len(self.messages) != len(messages):
+            raise ValueError(
+                "The number of new cyclic messages to be sent must be equal to "
+                "the number of messages originally specified for this task"
+            )
         self.messages = messages
 
 

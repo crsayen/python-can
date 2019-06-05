@@ -358,10 +358,21 @@ class CyclicSendTask(
     def modify_data(self, messages):
         """Update the contents of the periodically sent messages.
 
-        Note the Message must have the same :attr:`~can.Message.arbitration_id`
-        like the first message.
+        Note: The messages must all have the same
+        :attr:`~can.Message.arbitration_id` like the first message.
+
+        Note: The number of new cyclic messages to be sent must be equal to the
+        original number of messages originally specified for this task.
+
+        :param Union[List[can.Message], tuple(can.Message), can.Message] messages:
+            The messages with the new :attr:`can.Message.data`.
         """
         messages = self._check_and_convert_messages(messages)
+        if len(self.messages) != len(messages):
+            raise ValueError(
+                "The number of new cyclic messages to be sent must be equal to "
+                "the number of messages originally specified for this task"
+            )
         self.messages = messages
 
         header = bytearray()
