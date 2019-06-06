@@ -2,15 +2,12 @@
 
 """
 Ctypes wrapper module for IXXAT Virtual CAN Interface V3 on win32 systems
-
 Copyright (C) 2016 Giuseppe Corbelli <giuseppe.corbelli@weightpack.com>
-
 TODO: We could implement this interface such that setting other filters
       could work when the initial filters were set to zero using the
       software fallback. Or could the software filters even be changed
       after the connection was opened? We need to document that bahaviour!
       See also the NICAN interface.
-
 """
 
 import ctypes
@@ -361,14 +358,11 @@ CAN_ERROR_MESSAGES = {
 
 class IXXATBus(BusABC):
     """The CAN Bus implemented for the IXXAT interface.
-
     .. warning::
-
         This interface does implement efficient filtering of messages, but
         the filters have to be set in :meth:`~can.interfaces.ixxat.IXXATBus.__init__`
         using the ``can_filters`` parameter. Using :meth:`~can.interfaces.ixxat.IXXATBus.set_filters`
         does not work.
-
     """
 
     CHANNEL_BITRATES = {
@@ -400,16 +394,12 @@ class IXXATBus(BusABC):
         """
         :param int channel:
             The Channel id to create this bus with.
-
         :param list can_filters:
             See :meth:`can.BusABC.set_filters`.
-
         :param bool receive_own_messages:
             Enable self-reception of sent messages.
-
         :param int UniqueHardwareId:
             UniqueHardwareId to connect (optional, will use the first found if not supplied)
-
         :param int bitrate:
             Channel bitrate in bit/s
         """
@@ -716,20 +706,25 @@ class IXXATBus(BusABC):
 class CyclicSendTask(LimitedDurationCyclicSendTaskABC, RestartableCyclicTaskABC):
     """A message in the cyclic transmit list."""
 
-    def __init__(self, scheduler, msg, period, duration, resolution):
-        super().__init__(msg, period, duration)
+    def __init__(self, scheduler, msgs, period, duration, resolution):
+        super().__init__(msgs, period, duration)
+        if len(self.messages) != 1:
+            raise ValueError(
+                "IXXAT Interface only supports periodic transmission of 1 element"
+            )
+
         self._scheduler = scheduler
         self._index = None
         self._count = int(duration / period) if duration else 0
 
         self._msg = structures.CANCYCLICTXMSG()
         self._msg.wCycleTime = int(round(period * resolution))
-        self._msg.dwMsgId = msg.arbitration_id
+        self._msg.dwMsgId = self.messages[0].arbitration_id
         self._msg.uMsgInfo.Bits.type = constants.CAN_MSGTYPE_DATA
-        self._msg.uMsgInfo.Bits.ext = 1 if msg.is_extended_id else 0
-        self._msg.uMsgInfo.Bits.rtr = 1 if msg.is_remote_frame else 0
-        self._msg.uMsgInfo.Bits.dlc = msg.dlc
-        for i, b in enumerate(msg.data):
+        self._msg.uMsgInfo.Bits.ext = 1 if self.messages[0].is_extended_id else 0
+        self._msg.uMsgInfo.Bits.rtr = 1 if self.messages[0].is_remote_frame else 0
+        self._msg.uMsgInfo.Bits.dlc = self.messages[0].dlc
+        for i, b in enumerate(self.messages[0].data):
             self._msg.abData[i] = b
         self.start()
 
